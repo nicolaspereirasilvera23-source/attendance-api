@@ -1,13 +1,9 @@
-import sys
-sys.path.append('.')
-
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from backend.database import engine, Base
-from backend.routers.productos import router as productos_router
-from backend.routers.pedidos import router as pedidos_router
+from backend.routers import productos, pedidos
 
 # Crear tablas
 Base.metadata.create_all(bind=engine)
@@ -24,8 +20,8 @@ app.add_middleware(
 )
 
 # Routers
-app.include_router(productos_router)
-app.include_router(pedidos_router)
+app.include_router(productos.router)
+app.include_router(pedidos.router)
 
 # Servir frontend
 app.mount("/static", StaticFiles(directory="frontend/static"), name="static")

@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pedido Listo</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <h1>Menú</h1>
+    <div id="menu"></div>
+    <h2>Crear Pedido</h2>
+    <form id="pedido-form">
+        <input type="text" id="cliente" placeholder="Nombre del cliente" required>
+        <div id="items"></div>
+        <button type="button" id="add-item">Agregar Item</button>
+        <button type="submit">Crear Pedido</button>
+    </form>
+    <div id="pedido-status"></div>
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
