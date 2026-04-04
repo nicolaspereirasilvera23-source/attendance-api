@@ -21,7 +21,7 @@ DATABASE_URL = os.getenv("DATABASE_URL") or os.getenv("TEST_DATABASE_URL")
 @contextmanager
 def _get_connection():
     if DATABASE_URL:
-        conn = psycopg2.connect(DATABASE_URL)
+        conn = psycopg2.connect(postgresql://postgres:suarezvolleyclu@db.mjhioyayavukdggamjar.supabase.co:5432/postgres)
     else:
         conn = psycopg2.connect(
             dbname=DB_NAME,
