@@ -251,4 +251,4 @@ def exportar_asistencias_excel():
 
     except Exception as e: # pylint: disable=broad-exception-caught
         print("⚠️ Error exportando Excel:", e)
-        return None
+        return

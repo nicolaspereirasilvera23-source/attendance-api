@@ -8,6 +8,9 @@ from pathlib import Path
 import pandas as pd
 import psycopg2
 from psycopg2 import IntegrityError
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
 DB_NAME = os.getenv("POSTGRES_DB", "suarez_voley")
 DB_USER = os.getenv("POSTGRES_USER", "postgres")
@@ -15,7 +18,7 @@ DB_PASSWORD = os.getenv("POSTGRES_PASSWORD", "postgres")
 DB_HOST = os.getenv("POSTGRES_HOST", "localhost")
 DB_PORT = int(os.getenv("POSTGRES_PORT", "5432"))
 DATABASE_URL = os.getenv("DATABASE_URL") or os.getenv("TEST_DATABASE_URL")
-
+print("DATABASE_URL:", DATABASE_URL)
 
 
 @contextmanager
