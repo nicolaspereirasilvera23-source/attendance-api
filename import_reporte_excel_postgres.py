@@ -1,232 +1,254 @@
-import argparse
+# database.py
+# Manejo de base de datos PostgreSQL (Supabase compatible)
+
 import os
+import random
+from contextlib import closing, contextmanager
+from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
 import psycopg2
-from psycopg2.extras import execute_batch
+from psycopg2 import IntegrityError
 
-WORKBOOK_PATH = Path(__file__).resolve().parent / "Reporte_SVC.xlsx"
-JUGADORES_TABLE = "reporte_svc_jugadores_raw"
-ASISTENCIAS_TABLE = "reporte_svc_asistencias_raw"
+# ==============================
+# CONFIGURACIÓN
+# ==============================
 
+DATABASE_URL = os.getenv("DATABASE_URL")
 
-def _valor_texto(value):
-    if pd.isna(value):
-        return None
-
-    texto = str(value).strip()
-    return texto or None
-
-
-def _valor_entero(value):
-    if pd.isna(value):
-        return None
-
-    return int(float(value))
+# Fallback para entorno local
+DB_NAME = os.getenv("POSTGRES_DB", "suarez_voley")
+DB_USER = os.getenv("POSTGRES_USER", "postgres")
+DB_PASSWORD = os.getenv("POSTGRES_PASSWORD", "postgres")
+DB_HOST = os.getenv("POSTGRES_HOST", "localhost")
+DB_PORT = int(os.getenv("POSTGRES_PORT", "5432"))
 
 
-def _valor_codigo(value):
-    numero = _valor_entero(value)
-    if numero is None:
-        return None
+# ==============================
+# CONEXIÓN A BASE DE DATOS
+# ==============================
 
-    return f"{numero:04d}"
-
-
-def _cargar_excel():
-    jugadores_df = pd.read_excel(WORKBOOK_PATH, sheet_name="Jugadores")
-    asistencias_df = pd.read_excel(WORKBOOK_PATH, sheet_name="Asistencias")
-
-    jugadores = []
-    for excel_row_num, fila in jugadores_df.iterrows():
-        jugador = _valor_texto(fila.get("Jugador"))
-        codigo = _valor_codigo(fila.get("Codigo"))
-        edad = _valor_entero(fila.get("Edad"))
-        tiempo = _valor_entero(fila.get("Tiempo"))
-
-        if not any([jugador, codigo, edad, tiempo]):
-            continue
-
-        jugadores.append(
-            {
-                "excel_row_num": int(excel_row_num) + 2,
-                "id_excel": _valor_entero(fila.get("ID")),
-                "jugador": jugador,
-                "edad": edad,
-                "tiempo": tiempo,
-                "codigo": codigo,
-            }
-        )
-
-    asistencias = []
-    for excel_row_num, fila in asistencias_df.iterrows():
-        jugador = _valor_texto(fila.get("Jugador"))
-        codigo = _valor_codigo(fila.get("Codigo"))
-        fecha = _valor_texto(fila.get("Fecha"))
-        hora = _valor_texto(fila.get("Hora"))
-
-        if not any([jugador, codigo, fecha, hora]):
-            continue
-
-        asistencias.append(
-            {
-                "excel_row_num": int(excel_row_num) + 2,
-                "id_excel": _valor_entero(fila.get("ID")),
-                "jugador": jugador,
-                "codigo": codigo,
-                "fecha": fecha,
-                "hora": hora,
-            }
-        )
-
-    return jugadores, asistencias
-
-
-def _detectar_inconsistencias(jugadores, asistencias):
-    codigos_jugadores = {
-        jugador["codigo"] for jugador in jugadores if jugador.get("codigo")
-    }
-    codigos_asistencias = {
-        asistencia["codigo"] for asistencia in asistencias if asistencia.get("codigo")
-    }
-    codigos_faltantes = sorted(codigos_asistencias - codigos_jugadores)
-
-    return {"codigos_asistencias_sin_jugador": codigos_faltantes}
-
-
-def _crear_tablas(cur):
-    cur.execute(
-        f"""
-        CREATE TABLE IF NOT EXISTS {JUGADORES_TABLE} (
-            id BIGSERIAL PRIMARY KEY,
-            excel_row_num INTEGER NOT NULL UNIQUE,
-            id_excel INTEGER,
-            jugador TEXT,
-            edad INTEGER,
-            tiempo INTEGER,
-            codigo TEXT,
-            imported_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-        )
-        """
-    )
-    cur.execute(
-        f"""
-        CREATE TABLE IF NOT EXISTS {ASISTENCIAS_TABLE} (
-            id BIGSERIAL PRIMARY KEY,
-            excel_row_num INTEGER NOT NULL UNIQUE,
-            id_excel INTEGER,
-            jugador TEXT,
-            codigo TEXT,
-            fecha TEXT,
-            hora TEXT,
-            imported_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-        )
-        """
-    )
-
-
-def _guardar_en_postgres(database_url, jugadores, asistencias):
-    with psycopg2.connect(database_url) as conn:
-        with conn.cursor() as cur:
-            _crear_tablas(cur)
-            cur.execute(f"DELETE FROM {ASISTENCIAS_TABLE}")
-            cur.execute(f"DELETE FROM {JUGADORES_TABLE}")
-
-            execute_batch(
-                cur,
-                f"""
-                INSERT INTO {JUGADORES_TABLE} (
-                    excel_row_num,
-                    id_excel,
-                    jugador,
-                    edad,
-                    tiempo,
-                    codigo
-                )
-                VALUES (%s, %s, %s, %s, %s, %s)
-                """,
-                [
-                    (
-                        fila["excel_row_num"],
-                        fila["id_excel"],
-                        fila["jugador"],
-                        fila["edad"],
-                        fila["tiempo"],
-                        fila["codigo"],
-                    )
-                    for fila in jugadores
-                ],
+@contextmanager
+def get_connection():
+    """
+    Genera una conexión a la base de datos.
+    Usa DATABASE_URL en producción (Supabase).
+    Aplica SSL automáticamente si corresponde.
+    """
+    try:
+        if DATABASE_URL:
+            conn = psycopg2.connect(DATABASE_URL, sslmode="require")
+        else:
+            conn = psycopg2.connect(
+                dbname=DB_NAME,
+                user=DB_USER,
+                password=DB_PASSWORD,
+                host=DB_HOST,
+                port=DB_PORT,
             )
 
-            execute_batch(
-                cur,
-                f"""
-                INSERT INTO {ASISTENCIAS_TABLE} (
-                    excel_row_num,
-                    id_excel,
-                    jugador,
-                    codigo,
-                    fecha,
-                    hora
+        with closing(conn) as connection:
+            yield connection
+
+    except Exception as e:
+        print("❌ Error de conexión a DB:", e)
+        raise
+
+
+# ==============================
+# UTILIDADES
+# ==============================
+
+def normalizar_nombre(nombre):
+    return str(nombre).strip()
+
+
+def normalizar_codigo(codigo):
+    return str(codigo).strip()
+
+
+def codigo_valido(codigo):
+    return len(codigo) == 4 and codigo.isdigit()
+
+
+def generar_codigo_4_digitos():
+    return f"{random.randint(0, 9999):04d}"
+
+
+def generar_codigo_unico(cursor, codigos_en_uso=None):
+    """
+    Genera un código único de 4 dígitos que no exista en la DB.
+    """
+    if codigos_en_uso is None:
+        cursor.execute("SELECT codigo FROM jugadores WHERE codigo IS NOT NULL")
+        codigos_en_uso = {fila[0] for fila in cursor.fetchall()}
+
+    for _ in range(20000):
+        codigo = generar_codigo_4_digitos()
+        if codigo not in codigos_en_uso:
+            codigos_en_uso.add(codigo)
+            return codigo
+
+    raise RuntimeError("No hay códigos disponibles")
+
+
+# ==============================
+# INICIALIZACIÓN DB
+# ==============================
+
+def inicializar_db():
+    """
+    Crea tablas necesarias si no existen.
+    NO debe romper la app si falla.
+    """
+    try:
+        with get_connection() as conn:
+            cur = conn.cursor()
+
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS jugadores (
+                    id BIGSERIAL PRIMARY KEY,
+                    nombre TEXT NOT NULL UNIQUE,
+                    edad INTEGER NOT NULL CHECK(edad > 0 AND edad <= 120),
+                    tiempo INTEGER NOT NULL CHECK(tiempo >= 0 AND tiempo <= 80),
+                    codigo TEXT
                 )
-                VALUES (%s, %s, %s, %s, %s, %s)
-                """,
-                [
-                    (
-                        fila["excel_row_num"],
-                        fila["id_excel"],
-                        fila["jugador"],
-                        fila["codigo"],
-                        fila["fecha"],
-                        fila["hora"],
-                    )
-                    for fila in asistencias
-                ],
-            )
+            """)
+
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS asistencias (
+                    id BIGSERIAL PRIMARY KEY,
+                    jugador_id BIGINT NOT NULL,
+                    fecha TEXT NOT NULL,
+                    hora TEXT NOT NULL,
+                    presente BOOLEAN DEFAULT TRUE,
+                    FOREIGN KEY (jugador_id) REFERENCES jugadores(id)
+                )
+            """)
+
+            # Asegura estructura consistente
+            cur.execute("ALTER TABLE jugadores ADD COLUMN IF NOT EXISTS codigo TEXT")
+
+            cur.execute("""
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_jugadores_codigo 
+                ON jugadores(codigo)
+            """)
+
+            conn.commit()
+
+    except Exception as e: # pylint: disable=broad-exception-caught
+        print("⚠️ Error inicializando DB:", e)
 
 
-def main():
-    parser = argparse.ArgumentParser(
-        description="Carga Reporte_SVC.xlsx a tablas raw de PostgreSQL."
-    )
-    parser.add_argument(
-        "--database-url",
-        default=os.getenv("DATABASE_URL"),
-        help="Cadena de conexion PostgreSQL. Si no se pasa, usa DATABASE_URL.",
-    )
-    parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Solo analiza el Excel y muestra el resumen sin conectarse a PostgreSQL.",
-    )
-    args = parser.parse_args()
+# ==============================
+# CRUD JUGADORES
+# ==============================
 
-    jugadores, asistencias = _cargar_excel()
-    inconsistencias = _detectar_inconsistencias(jugadores, asistencias)
+def agregar_jugador_db(nombre, edad, tiempo):
+    nombre = normalizar_nombre(nombre)
+    if not nombre:
+        return {"exito": False, "mensaje": "Nombre inválido"}
 
-    print(f"Archivo: {WORKBOOK_PATH.name}")
-    print(f"Jugadores validos: {len(jugadores)}")
-    print(f"Asistencias validas: {len(asistencias)}")
-    print(
-        "Codigos en asistencias sin jugador en la hoja Jugadores: "
-        f"{inconsistencias['codigos_asistencias_sin_jugador']}"
-    )
+    try:
+        with get_connection() as conn:
+            cur = conn.cursor()
 
-    if args.dry_run:
-        return
+            # Verificar duplicado
+            cur.execute("SELECT id FROM jugadores WHERE LOWER(nombre) = %s", (nombre.lower(),))
+            if cur.fetchone():
+                return {"exito": False, "mensaje": "Jugador ya existe"}
 
-    if not args.database_url:
-        raise SystemExit(
-            "Falta --database-url o la variable de entorno DATABASE_URL."
-        )
+            codigo = generar_codigo_unico(cur)
 
-    _guardar_en_postgres(args.database_url, jugadores, asistencias)
-    print(
-        "Importacion completada en PostgreSQL: "
-        f"{JUGADORES_TABLE}={len(jugadores)}, {ASISTENCIAS_TABLE}={len(asistencias)}"
-    )
+            cur.execute("""
+                INSERT INTO jugadores (nombre, edad, tiempo, codigo)
+                VALUES (%s, %s, %s, %s)
+                RETURNING id
+            """, (nombre, edad, tiempo, codigo))
+
+            jugador_id = cur.fetchone()[0]
+            conn.commit()
+
+            return {"exito": True, "id": jugador_id, "codigo": codigo}
+
+    except IntegrityError as e:
+        return {"exito": False, "mensaje": f"Error DB: {e}"}
+    except Exception as e: # pylint: disable=broad-exception-caught
+        return {"exito": False, "mensaje": str(e)}
 
 
-if __name__ == "__main__":
-    main()
+def listar_jugadores_db():
+    with get_connection() as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT id, nombre, edad, tiempo, codigo FROM jugadores ORDER BY id ASC")
+        filas = cur.fetchall()
+
+        return [
+            {"id": f[0], "nombre": f[1], "edad": f[2], "tiempo": f[3], "codigo": f[4]}
+            for f in filas
+        ]
+
+
+# ==============================
+# ASISTENCIAS
+# ==============================
+
+def registrar_asistencia_db(codigo):
+    codigo = normalizar_codigo(codigo)
+
+    if not codigo_valido(codigo):
+        return {"exito": False}
+
+    with get_connection() as conn:
+        cur = conn.cursor()
+
+        cur.execute("SELECT id, nombre FROM jugadores WHERE codigo = %s", (codigo,))
+        jugador = cur.fetchone()
+
+        if not jugador:
+            return {"exito": False}
+
+        fecha = datetime.now().strftime("%Y-%m-%d")
+        hora = datetime.now().strftime("%H:%M")
+
+        cur.execute("""
+            INSERT INTO asistencias (jugador_id, fecha, hora)
+            VALUES (%s, %s, %s)
+        """, (jugador[0], fecha, hora))
+
+        conn.commit()
+
+        return {
+            "exito": True,
+            "nombre": jugador[1],
+            "hora": hora,
+            "codigo": codigo
+        }
+
+
+# ==============================
+# EXPORTACIÓN
+# ==============================
+
+def exportar_asistencias_excel():
+    """
+    Exporta datos a Excel.
+    Puede fallar en producción (filesystem), por eso NO debe romper flujo principal.
+    """
+    try:
+        ruta_excel = Path(__file__).resolve().parent / "Reporte_SVC.xlsx"
+
+        with get_connection() as conn:
+            df_jugadores = pd.read_sql_query("SELECT * FROM jugadores", conn)
+            df_asistencias = pd.read_sql_query("SELECT * FROM asistencias", conn)
+
+        with pd.ExcelWriter(ruta_excel, engine="openpyxl") as writer:
+            df_jugadores.to_excel(writer, sheet_name="Jugadores", index=False)
+            df_asistencias.to_excel(writer, sheet_name="Asistencias", index=False)
+
+        return ruta_excel
+
+    except Exception as e: # pylint: disable=broad-exception-caught
+        print("⚠️ Error exportando Excel:", e)
+        return None

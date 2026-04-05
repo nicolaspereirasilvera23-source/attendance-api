@@ -1,9 +1,17 @@
+# console.py, menu de consola para el sistema de asistencias
 from database import (
     agregar_jugador_db,
     exportar_asistencias_excel,
     inicializar_db,
     listar_jugadores_db,
 )
+
+
+def _mostrar_resultado_operacion(resultado, mensaje_ok):
+    if resultado["exito"]:
+        print(mensaje_ok)
+    else:
+        print(f"Error: {resultado.get('mensaje', 'Error desconocido')}")
 
 
 def menu_consola():
@@ -21,15 +29,18 @@ def menu_consola():
                 edad = int(input("Edad: "))
                 tiempo = int(input("Tiempo: "))
                 res = agregar_jugador_db(nombre, edad, tiempo)
-                if res["exito"]:
-                    print(f"Jugador agregado con exito. Codigo: {res.get('codigo', '----')}")
-                else:
-                    print(f"Error: {res.get('mensaje', 'Error desconocido')}")
+                _mostrar_resultado_operacion(
+                    res,
+                    f"Jugador agregado con exito. Codigo: {res.get('codigo', '----')}",
+                )
             except ValueError:
                 print("Error: Edad y tiempo deben ser numeros.")
         elif op == "2":
             jugadores = listar_jugadores_db()
             print("\nLISTADO DE JUGADORES:")
+            if not jugadores:
+                print("No hay jugadores cargados.")
+                continue
             for j in jugadores:
                 print(
                     f"- {j['nombre']} (Edad: {j['edad']}, Tiempo: {j['tiempo']} meses, Codigo: {j['codigo']})"
@@ -40,6 +51,8 @@ def menu_consola():
         elif op == "4":
             print("Saliendo...")
             break
+        else:
+            print("Error: opcion invalida.")
 
 
 if __name__ == "__main__":

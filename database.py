@@ -5,7 +5,6 @@ import random
 from contextlib import closing, contextmanager
 from datetime import datetime
 from pathlib import Path
-
 import pandas as pd
 import psycopg2
 from psycopg2 import IntegrityError
@@ -18,10 +17,12 @@ DB_PORT = int(os.getenv("POSTGRES_PORT", "5432"))
 DATABASE_URL = os.getenv("DATABASE_URL") or os.getenv("TEST_DATABASE_URL")
 
 
+
 @contextmanager
 def _get_connection():
     if DATABASE_URL:
-        conn = psycopg2.connect(postgresql://postgres:suarezvolleyclu@db.mjhioyayavukdggamjar.supabase.co:5432/postgres)
+        conn = psycopg2.connect(DATABASE_URL, sslmode="require")
+        print("Conexión a la base de datos establecida")
     else:
         conn = psycopg2.connect(
             dbname=DB_NAME,
@@ -99,7 +100,7 @@ def _asegurar_columna_codigo(cursor):
 def _actualizar_reporte_excel_seguro():
     try:
         exportar_asistencias_excel()
-    except Exception:
+    except Exception: # pylint: disable=broad-exception-caught
         # Si el archivo esta bloqueado por Excel u otra aplicacion,
         # no rompemos el flujo principal.
         pass

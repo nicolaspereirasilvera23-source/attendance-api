@@ -30,7 +30,19 @@ def pedir_entero(mensaje, minimo=None, maximo=None):
         return numero
 
 
+def _normalizar_fila_dict(fila):
+    return {str(clave).strip().lower(): valor for clave, valor in fila.items()}
+
+
+def _normalizar_codigo_prueba(codigo):
+    codigo_txt = str(codigo).strip()
+    if codigo_txt.endswith(".0"):
+        codigo_txt = codigo_txt[:-2]
+    return codigo_txt.zfill(4)
+
+
 def alta_individual():
+    # funcion para datos de jugador
     print("\nAlta individual")
     nombre = input("Nombre: ").strip()
     edad = pedir_entero("Edad: ", 1, 120)
@@ -106,9 +118,10 @@ def alta_desde_csv():
             return
 
         for fila in reader:
-            nombre = (fila.get("nombre") or "").strip()
-            edad_txt = (fila.get("edad") or "").strip()
-            tiempo_txt = (fila.get("tiempo") or "").strip()
+            fila_normalizada = _normalizar_fila_dict(fila)
+            nombre = str(fila_normalizada.get("nombre") or "").strip()
+            edad_txt = str(fila_normalizada.get("edad") or "").strip()
+            tiempo_txt = str(fila_normalizada.get("tiempo") or "").strip()
             try:
                 edad = int(edad_txt)
                 tiempo = int(tiempo_txt)
@@ -154,8 +167,8 @@ def cargar_jugadores_desde_excel():
 
     try:
         df = pd.read_excel(archivo, sheet_name="Jugadores")
-    except Exception as err:
-        print(f"ERROR -> no se pudo leer la hoja 'Jugadores': {err}")
+    except ImportError:
+        print(f"ERROR -> no se pudo leer la hoja 'Jugadores': {ImportError}")  # pyright: ignore[reportUndefinedVariable]
         return
 
     df.columns = [str(c).strip().lower() for c in df.columns]
@@ -196,8 +209,8 @@ def registrar_pruebas_desde_excel():
 
     try:
         df = pd.read_excel(archivo, sheet_name="Asistencias")
-    except Exception as err:
-        print(f"ERROR -> no se pudo leer la hoja 'Asistencias': {err}")
+    except ImportError:
+        print(f"ERROR -> no se pudo leer la hoja 'Asistencias': {ImportError}")
         return
 
     df.columns = [str(c).strip().lower() for c in df.columns]
@@ -210,10 +223,7 @@ def registrar_pruebas_desde_excel():
             fail += 1
             continue
 
-        codigo_txt = str(codigo).strip()
-        if codigo_txt.endswith(".0"):
-            codigo_txt = codigo_txt[:-2]
-        codigo_txt = codigo_txt.zfill(4)
+        codigo_txt = _normalizar_codigo_prueba(codigo)
 
         res = registrar_asistencia_db(codigo_txt)
         if res["exito"]:
