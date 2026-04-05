@@ -8,7 +8,6 @@ from pathlib import Path
 import pandas as pd
 import psycopg2
 from psycopg2 import IntegrityError
-import os
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -18,7 +17,6 @@ DB_PASSWORD = os.getenv("POSTGRES_PASSWORD", "postgres")
 DB_HOST = os.getenv("POSTGRES_HOST", "localhost")
 DB_PORT = int(os.getenv("POSTGRES_PORT", "5432"))
 DATABASE_URL = os.getenv("DATABASE_URL") or os.getenv("TEST_DATABASE_URL")
-print("DATABASE_URL:", DATABASE_URL)
 
 
 @contextmanager
@@ -138,7 +136,7 @@ def inicializar_db():
         )
         _asegurar_columna_codigo(cursor)
         conexion.commit()
-    _actualizar_reporte_excel_seguro()
+#_actualizar_reporte_excel_seguro()
 
 
 # agregar un jugador a la base de datos
