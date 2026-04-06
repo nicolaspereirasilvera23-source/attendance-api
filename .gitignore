@@ -219,4 +219,5 @@ test-results/
 playwright-report/
 blob-report/
 playwright/.cache
-
+SVCasistencias.env
+Reporte_SVC.xslx
