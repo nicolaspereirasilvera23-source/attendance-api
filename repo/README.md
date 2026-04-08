@@ -1,11 +1,11 @@
 # akumi.dev - Suarez Voley Club (Registro de Asistencias)
 
-Proyecto backend/fullstack junior con API REST en FastAPI, persistencia en SQLite y pruebas automatizadas.
+Proyecto backend/fullstack junior con API REST en FastAPI, persistencia en PostgreSQL y pruebas automatizadas.
 
 ## Stack
 - Python 3.x
 - FastAPI + Uvicorn
-- SQLite
+- PostgreSQL
 - Pandas + Openpyxl (exportacion de reporte Excel)
 - Frontend HTML/CSS/JS
 - Pytest + Playwright
@@ -22,15 +22,36 @@ Proyecto backend/fullstack junior con API REST en FastAPI, persistencia en SQLit
 - `main.py`: API FastAPI.
 - `database.py`: logica SQL y operaciones de datos.
 - `console.py`: menu de administracion por consola.
-- `static/index.html`: interfaz web.
-- `tests/test_api.py`: pruebas API (rapidas).
+- `static/iindex.html`: interfaz web actual.
+- `tests/test_api.py`: pruebas API.
 - `tests/test_asistencia_db.py`: prueba E2E con navegador.
+
+## Variables de entorno
+Usa alguno de estos enfoques:
+
+```bash
+DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/postgres
+TEST_DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/postgres_test
+```
+
+O bien:
+
+```bash
+POSTGRES_DB=suarez_voley
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+```
+
+`TEST_DATABASE_URL` debe apuntar a una base separada para pruebas. Si no existe, los tests de DB se omiten para no tocar datos reales.
 
 ## Como ejecutar
 ```bash
 pip install -r requirements.txt
 uvicorn main:app --reload
 ```
+
 Abrir: `http://127.0.0.1:8000`
 
 ## Consola administrativa
@@ -40,24 +61,29 @@ python console.py
 
 ## Bot de carga rapida (pruebas)
 Script con inputs para alta individual, lote manual, importacion CSV y generacion aleatoria.
+
 ```bash
 python bot_prueba_jugadores.py
 ```
+
 Incluye opciones para:
 - Cargar jugadores desde `Reporte_SVC.xlsx` (hoja `Jugadores`).
 - Registrar pruebas/asistencias desde `Reporte_SVC.xlsx` (hoja `Asistencias`, columna `Codigo`).
 
 ## Pruebas
-Pruebas API/unitarias (recomendado para CI):
+Pruebas API/unitarias:
+
 ```bash
-pytest -q -m "not e2e"
+python -m pytest -q -m "not e2e"
 ```
 
-Prueba E2E (requiere servidor en ejecucion y navegador Playwright):
+Prueba E2E (requiere servidor en ejecucion, navegador Playwright y `TEST_DATABASE_URL`):
+
 ```bash
 uvicorn main:app
-pytest -q -m e2e tests/test_asistencia_db.py
+python -m pytest -q -m e2e tests/test_asistencia_db.py
 ```
 
 ## CI
-Incluye pipeline base para GitLab en `.gitlab-ci.yml`, ejecutando `pytest -m "not e2e"`.
+El pipeline base ejecuta `python -m pytest -m "not e2e"`.
+Para validar realmente la capa de PostgreSQL en CI, configura `TEST_DATABASE_URL` apuntando a una base aislada.

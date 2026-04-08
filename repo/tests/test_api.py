@@ -10,9 +10,14 @@ import main
 
 @pytest.fixture
 def client(monkeypatch: pytest.MonkeyPatch):
-    if os.getenv("TEST_DATABASE_URL"):
-        monkeypatch.setattr(database, "DATABASE_URL", os.getenv("TEST_DATABASE_URL"))
+    test_database_url = os.getenv("TEST_DATABASE_URL")
+    if not test_database_url:
+        pytest.skip("TEST_DATABASE_URL no esta configurada; se omiten pruebas DB para no tocar datos reales")
+
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.setenv("TEST_DATABASE_URL", test_database_url)
     monkeypatch.setattr(database, "_actualizar_reporte_excel_seguro", lambda: None)
+
     database.inicializar_db()
     with database._get_connection() as conn:
         cur = conn.cursor()

@@ -1,3 +1,4 @@
+import os
 from datetime import datetime
 
 import pytest
@@ -8,6 +9,9 @@ import database
 
 @pytest.mark.e2e
 def test_flujo_asistencia_real(page: Page):
+    if not os.getenv("TEST_DATABASE_URL"):
+        pytest.skip("TEST_DATABASE_URL no esta configurada; se omite E2E para no tocar datos reales")
+
     database.inicializar_db()
     nombre_test = "Akumi de Prueba"
     codigo_test = "2468"

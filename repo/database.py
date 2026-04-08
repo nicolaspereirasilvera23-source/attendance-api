@@ -5,34 +5,140 @@ import random
 from contextlib import closing, contextmanager
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import parse_qs, unquote, urlsplit
+
 import pandas as pd
 import psycopg2
-from psycopg2 import IntegrityError
 from dotenv import load_dotenv
+from psycopg2 import IntegrityError
+
 load_dotenv()
 
-DB_NAME = os.getenv("POSTGRES_DB", "suarez_voley")
-DB_USER = os.getenv("POSTGRES_USER", "postgres")
-DB_PASSWORD = os.getenv("POSTGRES_PASSWORD", "postgres")
-DB_HOST = os.getenv("POSTGRES_HOST", "localhost")
-DB_PORT = int(os.getenv("POSTGRES_PORT", "5432"))
-DATABASE_URL = os.getenv("DATABASE_URL") or os.getenv("TEST_DATABASE_URL")
+BASE_DIR = Path(__file__).resolve().parent
+LOCAL_DB_HOSTS = {"localhost", "127.0.0.1", "::1"}
+
+
+def _limpiar_valor_env(valor):
+    if valor is None:
+        return None
+    return str(valor).strip().strip('"').strip("'")
+
+
+def _leer_database_url_desde_archivo():
+    env_path = BASE_DIR / ".env"
+    if not env_path.exists():
+        return None
+
+    for raw_line in env_path.read_text(encoding="utf-8", errors="replace").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith(("postgres://", "postgresql://")):
+            return line
+        if "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        if key.strip() in {"DATABASE_URL", "TEST_DATABASE_URL"}:
+            return _limpiar_valor_env(value)
+    return None
+
+
+def _database_url_actual():
+    return (
+        _limpiar_valor_env(os.getenv("TEST_DATABASE_URL"))
+        or _limpiar_valor_env(os.getenv("DATABASE_URL"))
+        or _leer_database_url_desde_archivo()
+    )
+
+
+def _host_es_local(host):
+    return not host or host.lower() in LOCAL_DB_HOSTS
+
+
+def _parsear_database_url_flexible(database_url):
+    cleaned_url = _limpiar_valor_env(database_url)
+    parsed = urlsplit(cleaned_url)
+
+    parsed_port = None
+    try:
+        parsed_port = parsed.port
+    except ValueError:
+        parsed_port = None
+
+    if parsed.scheme in {"postgres", "postgresql"} and parsed.hostname and parsed_port is not None:
+        query = parse_qs(parsed.query)
+        connection_kwargs = {
+            "dbname": unquote(parsed.path.lstrip("/") or "postgres"),
+            "user": unquote(parsed.username or ""),
+            "password": unquote(parsed.password or ""),
+            "host": parsed.hostname,
+            "port": parsed_port or 5432,
+            "connect_timeout": 10,
+        }
+        if "sslmode" in query:
+            connection_kwargs["sslmode"] = query["sslmode"][0]
+        elif not _host_es_local(parsed.hostname):
+            connection_kwargs["sslmode"] = "require"
+        return connection_kwargs
+
+    if "://" not in cleaned_url:
+        raise ValueError("DATABASE_URL invalida: falta el esquema postgres:// o postgresql://")
+
+    _, remainder = cleaned_url.split("://", 1)
+    authority, separator, path_and_query = remainder.partition("/")
+    if not separator:
+        raise ValueError("DATABASE_URL invalida: falta el nombre de la base de datos")
+
+    userinfo, at_sign, hostinfo = authority.rpartition("@")
+    if not at_sign:
+        raise ValueError("DATABASE_URL invalida: falta el host o las credenciales")
+
+    username, colon, password = userinfo.partition(":")
+    if not colon:
+        raise ValueError("DATABASE_URL invalida: falta la contrasena del usuario")
+
+    host, port_separator, port_text = hostinfo.rpartition(":")
+    if not port_separator:
+        host = hostinfo
+        port = 5432
+    else:
+        port = int(port_text)
+
+    database_name, _, query_string = path_and_query.partition("?")
+    connection_kwargs = {
+        "dbname": unquote(database_name or "postgres"),
+        "user": unquote(username),
+        "password": unquote(password),
+        "host": host,
+        "port": port,
+        "connect_timeout": 10,
+    }
+    query = parse_qs(query_string)
+    if "sslmode" in query:
+        connection_kwargs["sslmode"] = query["sslmode"][0]
+    elif not _host_es_local(host):
+        connection_kwargs["sslmode"] = "require"
+    return connection_kwargs
+
+
+def _connection_kwargs():
+    database_url = _database_url_actual()
+    if database_url:
+        return _parsear_database_url_flexible(database_url)
+
+    return {
+        "dbname": os.getenv("POSTGRES_DB", "suarez_voley"),
+        "user": os.getenv("POSTGRES_USER", "postgres"),
+        "password": os.getenv("POSTGRES_PASSWORD", "postgres"),
+        "host": os.getenv("POSTGRES_HOST", "localhost"),
+        "port": int(os.getenv("POSTGRES_PORT", "5432")),
+        "connect_timeout": 10,
+    }
 
 
 @contextmanager
 def _get_connection():
-    if DATABASE_URL:
-        conn = psycopg2.connect(DATABASE_URL, sslmode="require")
-        print("Conexión a la base de datos establecida")
-    else:
-        conn = psycopg2.connect(
-            dbname=DB_NAME,
-            user=DB_USER,
-            password=DB_PASSWORD,
-            host=DB_HOST,
-            port=DB_PORT,
-        )
-
+    conn = psycopg2.connect(**_connection_kwargs())
     with closing(conn) as connection:
         yield connection
 
@@ -101,8 +207,8 @@ def _asegurar_columna_codigo(cursor):
 def _actualizar_reporte_excel_seguro():
     try:
         exportar_asistencias_excel()
-    except Exception: # pylint: disable=broad-exception-caught
-        # Si el archivo esta bloqueado por Excel u otra aplicacion,
+    except Exception:
+        # Si el archivo esta bloqueado o el filesystem no permite escritura,
         # no rompemos el flujo principal.
         pass
 
@@ -136,7 +242,6 @@ def inicializar_db():
         )
         _asegurar_columna_codigo(cursor)
         conexion.commit()
-#_actualizar_reporte_excel_seguro()
 
 
 # agregar un jugador a la base de datos
@@ -274,6 +379,23 @@ def registrar_asistencia_db(codigo):
         hora = datetime.now().strftime("%H:%M")
 
         cur.execute(
+            """
+            SELECT 1
+            FROM asistencias
+            WHERE jugador_id = %s AND fecha = %s AND hora = %s
+            LIMIT 1
+            """,
+            (jugador[0], fecha, hora),
+        )
+        if cur.fetchone():
+            return {
+                "exito": True,
+                "nombre": jugador[1],
+                "hora": hora,
+                "codigo": jugador[2],
+            }
+
+        cur.execute(
             "INSERT INTO asistencias (jugador_id, fecha, hora) VALUES (%s, %s, %s)",
             (jugador[0], fecha, hora),
         )
@@ -304,9 +426,10 @@ def verificar_jugador_db(codigo):
             return {"existe": True, "nombre": jugador[1], "codigo": jugador[2]}
         return {"existe": False, "codigo": codigo_limpio}
 
+
 # exportar asistencias a excel desde la base de datos
 def exportar_asistencias_excel():
-    ruta_excel = Path(__file__).resolve().parent / "Reporte_SVC.xlsx"
+    ruta_excel = BASE_DIR / "Reporte_SVC.xlsx"
     with _get_connection() as conn:
         query_jugadores = """
             SELECT id AS ID, nombre AS Jugador, edad AS Edad, tiempo AS Tiempo, codigo AS Codigo
@@ -331,6 +454,7 @@ def exportar_asistencias_excel():
         df_jugadores.to_excel(writer, sheet_name="Jugadores", index=False)
         df_asistencias.to_excel(writer, sheet_name="Asistencias", index=False)
     return ruta_excel
+
 
 # obtener los ultimos asistentes de la base de datos
 def obtener_ultimos_asistentes(limite=5):
