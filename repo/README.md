@@ -26,34 +26,6 @@ Proyecto backend/fullstack junior con API REST en FastAPI, persistencia en Postg
 - `tests/test_api.py`: pruebas API.
 - `tests/test_asistencia_db.py`: prueba E2E con navegador.
 
-## Variables de entorno
-Usa alguno de estos enfoques:
-
-```bash
-DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/postgres
-TEST_DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/postgres_test
-```
-
-O bien:
-
-```bash
-POSTGRES_DB=suarez_voley
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=postgres
-POSTGRES_HOST=localhost
-POSTGRES_PORT=5432
-```
-
-`TEST_DATABASE_URL` debe apuntar a una base separada para pruebas. Si no existe, los tests de DB se omiten para no tocar datos reales.
-
-## Como ejecutar
-```bash
-pip install -r requirements.txt
-uvicorn main:app --reload
-```
-
-Abrir: `http://127.0.0.1:8000`
-
 ## Consola administrativa
 ```bash
 python console.py
