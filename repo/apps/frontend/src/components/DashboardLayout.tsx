@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, CheckSquare, Calendar, KeyRound, LogOut, User } from 'lucide-react';
+import { LayoutDashboard, CheckSquare, Calendar, KeyRound, LogOut, User, Users } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
 
 export const DashboardLayout: React.FC = () => {
@@ -11,6 +11,7 @@ export const DashboardLayout: React.FC = () => {
   const navItems = [
     { label: 'Dashboard', path: '/', icon: LayoutDashboard },
     { label: 'Check-In Kiosco', path: '/kiosco', icon: KeyRound },
+    { label: 'Jugadores & PINs', path: '/jugadores', icon: Users },
     { label: 'Tablero Kanban', path: '/kanban', icon: CheckSquare },
     { label: 'Calendario', path: '/calendario', icon: Calendar },
   ];
