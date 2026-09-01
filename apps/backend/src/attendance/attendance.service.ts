@@ -46,6 +46,82 @@ export class AttendanceService {
     }));
   }
 
+  async getWeeklyMetrics() {
+    const now = new Date();
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - now.getDay()); // Sunday
+    startOfWeek.setHours(0, 0, 0, 0);
+
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(endOfWeek.getDate() + 6); // Saturday
+    endOfWeek.setHours(23, 59, 59, 999);
+
+    const attendances = await this.prisma.attendance.findMany({
+      where: {
+        date: {
+          gte: startOfWeek,
+          lte: endOfWeek,
+        },
+      },
+      include: {
+        player: true,
+      },
+      orderBy: { date: 'asc' },
+    });
+
+    // Group by day
+    const dailyCounts: Record<string, number> = {};
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(startOfWeek);
+      date.setDate(date.getDate() + i);
+      const dateStr = date.toISOString().split('T')[0];
+      dailyCounts[dateStr] = 0;
+    }
+
+    for (const att of attendances) {
+      const dateStr = att.date.toISOString().split('T')[0];
+      if (dailyCounts[dateStr] !== undefined) {
+        dailyCounts[dateStr]++;
+      }
+    }
+
+    const dailyArray = Object.entries(dailyCounts).map(([date, count]) => ({
+      date,
+      count,
+    }));
+
+    // Group by player
+    const playerAttendance: Record<
+      string,
+      { name: string; count: number; codes: string[] }
+    > = {};
+    for (const att of attendances) {
+      const pid = att.player.id;
+      if (!playerAttendance[pid]) {
+        playerAttendance[pid] = { name: att.player.name, count: 0, codes: [] };
+      }
+      playerAttendance[pid].count++;
+      if (!playerAttendance[pid].codes.includes(att.player.code)) {
+        playerAttendance[pid].codes.push(att.player.code);
+      }
+    }
+
+    const topPlayers = Object.values(playerAttendance)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10)
+      .map((p) => ({
+        nombre: p.name,
+        codigo: p.codes[0],
+        asistencias: p.count,
+      }));
+
+    return {
+      total_semana: attendances.length,
+      por_dia: dailyArray,
+      top_jugadores: topPlayers,
+    };
+  }
+
   async batchSync(attendances: { codigo: string; timestamp: string }[]) {
     const results = [];
     for (const att of attendances) {

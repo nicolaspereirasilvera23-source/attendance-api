@@ -23,6 +23,11 @@ export class AttendanceController {
     return this.attendanceService.getRecentAttendances();
   }
 
+  @Get('asistencias/semanales')
+  async getWeeklyMetrics() {
+    return this.attendanceService.getWeeklyMetrics();
+  }
+
   @Post('check-in/batch-sync')
   @HttpCode(HttpStatus.OK)
   async batchSync(

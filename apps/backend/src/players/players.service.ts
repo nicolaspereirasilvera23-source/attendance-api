@@ -1,11 +1,38 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ConflictException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class PlayersService {
   constructor(private prisma: PrismaService) {}
 
+  private validateCode(code: string) {
+    if (!/^\d{4}$/.test(code)) {
+      throw new BadRequestException(
+        'El código debe ser de 4 dígitos numéricos',
+      );
+    }
+  }
+
+  private async generateUniqueCode(): Promise<string> {
+    for (let attempts = 0; attempts < 10; attempts++) {
+      const code = Math.floor(1000 + Math.random() * 9000).toString();
+      const existing = await this.prisma.player.findUnique({ where: { code } });
+      if (!existing) {
+        return code;
+      }
+    }
+    throw new ConflictException(
+      'No se pudo generar un código único, intente nuevamente',
+    );
+  }
+
   async findByCode(code: string) {
+    this.validateCode(code);
     const player = await this.prisma.player.findUnique({
       where: { code },
     });
@@ -16,7 +43,7 @@ export class PlayersService {
   }
 
   async create(data: { name: string; age: number; timeInClub: number }) {
-    const code = Math.floor(1000 + Math.random() * 9000).toString();
+    const code = await this.generateUniqueCode();
     return this.prisma.player.create({
       data: {
         code,
