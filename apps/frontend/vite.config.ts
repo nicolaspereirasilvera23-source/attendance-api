@@ -1,56 +1,53 @@
-import react from '@vitejs/plugin-react'
-import tailwindcss from '@tailwindcss/vite'
-import { defineConfig } from 'vite'
-import { VitePWA } from 'vite-plugin-pwa'
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import { VitePWA } from 'vite-plugin-pwa';
+import path from 'path';
 
 export default defineConfig({
   plugins: [
-    tailwindcss(),
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['svc.png', 'icons/*.png'],
+      includeAssets: ['favicon.ico', 'robots.txt', 'svc.png'],
       manifest: {
-        name: 'Suarez Voley Club - Asistencias',
+        name: 'Suarez Voley Club - Sistema de Asistencias',
         short_name: 'SVC CheckIn',
-        description: 'Control de asistencia y gestion del Suarez Voley Club',
-        theme_color: '#1E3A8A',
+        description: 'Sistema de control de asistencia, dashboard, kanban y eventos del Suarez Voley Club',
+        theme_color: '#006837',
         background_color: '#121212',
         display: 'standalone',
         orientation: 'portrait',
-        start_url: '/check-in',
         icons: [
           {
-            src: 'icons/pwa-192x192.png',
+            src: '/svc.png',
             sizes: '192x192',
-            type: 'image/png',
+            type: 'image/png'
           },
           {
-            src: 'icons/pwa-512x512.png',
+            src: '/svc.png',
             sizes: '512x512',
             type: 'image/png',
-            purpose: 'any maskable',
-          },
-        ],
+            purpose: 'any maskable'
+          }
+        ]
       },
       workbox: {
-        // Precachea todos los assets del build (Cache First por defecto)
-        globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
-        runtimeCaching: [
-          {
-            // Lista de jugadores: StaleWhileRevalidate + IndexedDB fallback (Dexie)
-            urlPattern: /\/jugadores/i,
-            handler: 'StaleWhileRevalidate',
-            options: {
-              cacheName: 'api-players-cache',
-              expiration: {
-                maxEntries: 200,
-                maxAgeSeconds: 60 * 60 * 24, // 24 horas
-              },
-            },
-          },
-        ],
-      },
-    }),
+        globPatterns: ['**/*.{js,css,html,ico,png,svg}']
+      }
+    })
   ],
-})
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src')
+    }
+  },
+  server: {
+    port: 3000,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3001',
+        changeOrigin: true
+      }
+    }
+  }
+});

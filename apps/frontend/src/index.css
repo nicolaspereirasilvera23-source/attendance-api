@@ -1,12 +1,28 @@
-﻿@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-/* SVC brand tokens */
-@theme {
-  --color-verde-svc: #006837;
-  --color-verde-brillante: #2ecc71;
-  --color-rojo-svc: #be1e2d;
-  --color-negro: #121212;
-  --color-gris-card: #1e1e1e;
-  --color-gris-borde: #333333;
-  --color-gris-input: #2a2a2a;
+@layer base {
+  body {
+    @apply bg-svc-bg text-svc-text min-h-screen font-sans;
+  }
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1e1e1e;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #006837;
 }
