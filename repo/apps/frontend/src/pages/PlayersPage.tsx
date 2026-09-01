@@ -1,14 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { offlineDb, generateOfflinePin, OfflinePlayer } from '../db/indexedDb';
-import { Users, UserPlus, Key, Wifi, WifiOff, CheckCircle, RefreshCw } from 'lucide-react';
+import { Users, UserPlus, Key, Wifi, WifiOff, CheckCircle, RefreshCw, Shield } from 'lucide-react';
+
+const SQUAD_OPTIONS = [
+  'Sub-14',
+  'Sub-16',
+  'Sub-18',
+  'Sub-21',
+  'Mayores Femenino',
+  'Mayores Masculino',
+  'Primera Division'
+];
 
 export const PlayersPage: React.FC = () => {
-  const [players, setPlayers] = useState<Array<{ id?: string; code: string; name: string; age: number; timeInClub: number }>>([]);
+  const [players, setPlayers] = useState<Array<{ id?: string; code: string; name: string; age: number; squad: string; timeInClub: number }>>([]);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
   // Form State
   const [name, setName] = useState('');
   const [age, setAge] = useState<number | ''>('');
+  const [squad, setSquad] = useState('Sub-18');
   const [timeInClub, setTimeInClub] = useState<number | ''>('');
   const [generatedPin, setGeneratedPin] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -48,7 +59,15 @@ export const PlayersPage: React.FC = () => {
 
     // Fallback IndexedDB
     const localPlayers = await offlineDb.players.toArray();
-    setPlayers(localPlayers.map((p) => ({ code: p.code, name: p.name, age: p.age, timeInClub: p.timeInClub })));
+    setPlayers(
+      localPlayers.map((p) => ({
+        code: p.code,
+        name: p.name,
+        age: p.age,
+        squad: p.squad || 'Sin Plantel',
+        timeInClub: p.timeInClub
+      }))
+    );
   };
 
   const handleRegisterPlayer = async (e: React.FormEvent) => {
@@ -62,12 +81,13 @@ export const PlayersPage: React.FC = () => {
 
     try {
       if (!isOnline) {
-        // Generación de PIN offline en IndexedDB
+        // Generación de PIN offline en IndexedDB con asignación de Plantel
         const pin = await generateOfflinePin();
         const newOfflinePlayer: OfflinePlayer = {
           code: pin,
           name: name.trim(),
           age: Number(age),
+          squad: squad,
           timeInClub: Number(timeInClub),
           createdAt: new Date().toISOString(),
           synced: false
@@ -75,7 +95,7 @@ export const PlayersPage: React.FC = () => {
 
         await offlineDb.players.add(newOfflinePlayer);
         setGeneratedPin(pin);
-        showToast(`Jugador guardado localmente (PIN Generado: ${pin})`, 'success');
+        showToast(`Jugador guardado en Plantel ${squad} (PIN: ${pin})`, 'success');
         await loadPlayers();
       } else {
         // Envío directo a NestJS API
@@ -85,6 +105,7 @@ export const PlayersPage: React.FC = () => {
           body: JSON.stringify({
             nombre: name.trim(),
             edad: Number(age),
+            plantel: squad,
             tiempo: Number(timeInClub)
           })
         });
@@ -93,7 +114,7 @@ export const PlayersPage: React.FC = () => {
 
         if (res.ok) {
           setGeneratedPin(data.codigo);
-          showToast(`Jugador registrado exitosamente (PIN: ${data.codigo})`, 'success');
+          showToast(`Jugador registrado en ${squad} (PIN: ${data.codigo})`, 'success');
           await loadPlayers();
         } else {
           showToast(data.detail || 'Error registrando jugador', 'error');
@@ -134,10 +155,10 @@ export const PlayersPage: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold text-white flex items-center gap-2">
             <Users className="w-7 h-7 text-svc-brightGreen" />
-            <span>Gestión de Jugadores y PINs de Acceso</span>
+            <span>Gestión de Jugadores, Planteles y PINs</span>
           </h1>
           <p className="text-sm text-svc-muted mt-1">
-            Alta de nuevos jugadores con generación de PIN de 4 dígitos (Soporte Online y Offline PWA)
+            Asignación de jugadores por Plantel y generación automática de PINs (Online & Offline PWA)
           </p>
         </div>
 
@@ -158,7 +179,7 @@ export const PlayersPage: React.FC = () => {
         <div className="bg-svc-card border border-svc-border p-6 rounded-2xl space-y-4">
           <h3 className="text-lg font-bold text-white flex items-center gap-2 border-b border-svc-border pb-3">
             <UserPlus className="w-5 h-5 text-svc-brightGreen" />
-            <span>Registrar Nuevo Jugador</span>
+            <span>Registrar en Plantel</span>
           </h3>
 
           {generatedPin && (
@@ -179,6 +200,24 @@ export const PlayersPage: React.FC = () => {
                 placeholder="Ej: Mateo González"
                 className="w-full bg-svc-input border border-svc-border rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-svc-green"
               />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold uppercase text-svc-muted mb-1">Plantel / Categoría</label>
+              <div className="relative">
+                <Shield className="w-4 h-4 absolute left-3.5 top-3.5 text-svc-muted" />
+                <select
+                  value={squad}
+                  onChange={(e) => setSquad(e.target.value)}
+                  className="w-full bg-svc-input border border-svc-border rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-svc-green"
+                >
+                  {SQUAD_OPTIONS.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -221,17 +260,17 @@ export const PlayersPage: React.FC = () => {
               ) : (
                 <>
                   <Key className="w-4 h-4" />
-                  <span>Generar PIN y Registrar</span>
+                  <span>Generar PIN y Guardar</span>
                 </>
               )}
             </button>
           </form>
         </div>
 
-        {/* Lista de Jugadores & PINs */}
+        {/* Lista de Jugadores & PINs con Plantel */}
         <div className="lg:col-span-2 bg-svc-card border border-svc-border p-6 rounded-2xl space-y-4">
           <h3 className="text-lg font-bold text-white flex items-center justify-between border-b border-svc-border pb-3">
-            <span>Listado de Jugadores Registrados</span>
+            <span>Jugadores Registrados por Plantel</span>
             <span className="text-xs bg-svc-input text-svc-muted px-3 py-1 rounded-full">{players.length} Jugadores</span>
           </h3>
 
@@ -241,14 +280,15 @@ export const PlayersPage: React.FC = () => {
                 <tr>
                   <th className="p-3 rounded-l-xl">PIN</th>
                   <th className="p-3">Nombre</th>
+                  <th className="p-3">Plantel</th>
                   <th className="p-3">Edad</th>
-                  <th className="p-3 rounded-r-xl">Meses en Club</th>
+                  <th className="p-3 rounded-r-xl">Permanencia</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-svc-input">
                 {players.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="p-4 text-center text-svc-muted italic">
+                    <td colSpan={5} className="p-4 text-center text-svc-muted italic">
                       No hay jugadores registrados en el sistema
                     </td>
                   </tr>
@@ -257,6 +297,11 @@ export const PlayersPage: React.FC = () => {
                     <tr key={i} className="hover:bg-svc-input/30 transition-colors">
                       <td className="p-3 font-mono font-bold text-svc-brightGreen">#{p.code}</td>
                       <td className="p-3 font-medium text-white">{p.name}</td>
+                      <td className="p-3">
+                        <span className="bg-svc-green/20 text-svc-brightGreen border border-svc-green/30 text-[11px] font-semibold px-2.5 py-1 rounded-full">
+                          {p.squad}
+                        </span>
+                      </td>
                       <td className="p-3 text-gray-300">{p.age} años</td>
                       <td className="p-3 text-gray-300">{p.timeInClub} meses</td>
                     </tr>

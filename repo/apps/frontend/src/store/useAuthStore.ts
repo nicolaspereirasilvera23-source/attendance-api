@@ -1,10 +1,13 @@
 import { create } from 'zustand';
 
-interface User {
+export type StaffType = 'DIRECTOR_TECNICO' | 'ADMINISTRATIVO';
+
+export interface User {
   id: string;
   name: string;
   email: string;
   role: 'ADMIN' | 'COACH' | 'STAFF';
+  staffType: StaffType;
 }
 
 interface AuthState {

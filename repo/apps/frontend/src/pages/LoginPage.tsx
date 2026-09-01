@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuthStore } from '../store/useAuthStore';
-import { Lock, Mail } from 'lucide-react';
+import { useAuthStore, StaffType } from '../store/useAuthStore';
+import { Lock, Mail, ClipboardList, ShieldCheck } from 'lucide-react';
 
 export const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [staffType, setStaffType] = useState<StaffType>('DIRECTOR_TECNICO');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -22,9 +23,10 @@ export const LoginPage: React.FC = () => {
       const mockToken = 'mock_jwt_token_svc_2026';
       const mockUser = {
         id: '1',
-        name: 'Entrenador Suárez',
+        name: staffType === 'DIRECTOR_TECNICO' ? 'Director Técnico DT' : 'Personal Administrativo',
         email,
-        role: 'ADMIN' as const
+        role: (staffType === 'DIRECTOR_TECNICO' ? 'COACH' : 'ADMIN') as 'COACH' | 'ADMIN',
+        staffType
       };
 
       setAuth(mockToken, mockUser);
@@ -38,23 +40,57 @@ export const LoginPage: React.FC = () => {
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-svc-bg p-4">
-      <div className="w-full max-w-md bg-svc-card border border-svc-border p-8 rounded-2xl shadow-2xl">
-        <div className="flex justify-center mb-6">
+      <div className="w-full max-w-md bg-svc-card border border-svc-border p-8 rounded-2xl shadow-2xl space-y-6">
+        <div className="flex justify-center">
           <img src="/svc.png" alt="Suarez Voley Club Logo" className="h-20 object-contain" />
         </div>
 
-        <h2 className="text-2xl font-bold text-center text-white mb-2">Ingresar al Sistema</h2>
-        <p className="text-sm text-center text-svc-muted mb-6">Panel Administrativo Suárez Voley Club</p>
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-white">Ingresar al Sistema</h2>
+          <p className="text-sm text-svc-muted mt-1">Panel de Control Suárez Voley Club</p>
+        </div>
 
         {error && (
-          <div className="bg-svc-red/20 border border-svc-red text-red-300 px-4 py-3 rounded-xl text-sm mb-4">
+          <div className="bg-svc-red/20 border border-svc-red text-red-300 px-4 py-3 rounded-xl text-sm">
             {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Selección de Tipo de Staff */}
           <div>
-            <label className="block text-xs font-semibold uppercase text-svc-muted mb-1.5">Email</label>
+            <label className="block text-xs font-semibold uppercase text-svc-muted mb-2">Rol de Staff</label>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setStaffType('DIRECTOR_TECNICO')}
+                className={`p-3 rounded-xl border flex flex-col items-center gap-1.5 transition-all text-xs font-bold ${
+                  staffType === 'DIRECTOR_TECNICO'
+                    ? 'bg-svc-green/20 border-svc-green text-svc-brightGreen shadow-md'
+                    : 'bg-svc-input border-svc-border text-svc-muted hover:text-white'
+                }`}
+              >
+                <ClipboardList className="w-5 h-5" />
+                <span>Director Técnico</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setStaffType('ADMINISTRATIVO')}
+                className={`p-3 rounded-xl border flex flex-col items-center gap-1.5 transition-all text-xs font-bold ${
+                  staffType === 'ADMINISTRATIVO'
+                    ? 'bg-svc-green/20 border-svc-green text-svc-brightGreen shadow-md'
+                    : 'bg-svc-input border-svc-border text-svc-muted hover:text-white'
+                }`}
+              >
+                <ShieldCheck className="w-5 h-5" />
+                <span>Administrativo</span>
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold uppercase text-svc-muted mb-1.5">Correo Electrónico</label>
             <div className="relative">
               <Mail className="w-5 h-5 absolute left-3.5 top-3.5 text-svc-muted" />
               <input
@@ -62,8 +98,8 @@ export const LoginPage: React.FC = () => {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="entrenador@suarezvoley.com"
-                className="w-full bg-svc-input border border-svc-border rounded-xl pl-11 pr-4 py-3 text-white focus:outline-none focus:border-svc-green"
+                placeholder="usuario@suarezvoley.com"
+                className="w-full bg-svc-input border border-svc-border rounded-xl pl-11 pr-4 py-3 text-white focus:outline-none focus:border-svc-green text-sm"
               />
             </div>
           </div>
@@ -78,7 +114,7 @@ export const LoginPage: React.FC = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full bg-svc-input border border-svc-border rounded-xl pl-11 pr-4 py-3 text-white focus:outline-none focus:border-svc-green"
+                className="w-full bg-svc-input border border-svc-border rounded-xl pl-11 pr-4 py-3 text-white focus:outline-none focus:border-svc-green text-sm"
               />
             </div>
           </div>
@@ -86,9 +122,9 @@ export const LoginPage: React.FC = () => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3.5 bg-svc-green hover:bg-green-700 text-white font-bold rounded-xl shadow-lg transition-all"
+            className="w-full py-3.5 bg-svc-green hover:bg-green-700 text-white font-bold rounded-xl shadow-lg transition-all text-sm"
           >
-            {loading ? 'Ingresando...' : 'Iniciar Sesión'}
+            {loading ? 'Ingresando...' : `Iniciar Sesión como ${staffType === 'DIRECTOR_TECNICO' ? 'DT' : 'Admin'}`}
           </button>
         </form>
       </div>

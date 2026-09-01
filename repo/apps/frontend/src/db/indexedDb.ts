@@ -13,6 +13,7 @@ export interface OfflinePlayer {
   code: string; // PIN de 4 dígitos generado offline
   name: string;
   age: number;
+  squad: string; // Plantel/Categoría (Sub-14, Sub-16, Sub-18, Primera, etc.)
   timeInClub: number;
   createdAt: string;
   synced: boolean;
@@ -24,9 +25,9 @@ export class SVCDatabase extends Dexie {
 
   constructor() {
     super('SVCDatabase');
-    this.version(2).stores({
+    this.version(3).stores({
       attendances: '++id, codigo, timestamp, synced',
-      players: '++id, &code, name, synced'
+      players: '++id, &code, name, squad, synced'
     });
   }
 }
