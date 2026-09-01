@@ -1,4 +1,8 @@
-import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  ConflictException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
@@ -21,12 +25,18 @@ export class AuthService {
       throw new UnauthorizedException('Credenciales inválidas');
     }
 
-    const { password: _, ...result } = user;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password: _password, ...result } = user;
     return result;
   }
 
-  async login(user: { id: string; email: string; name: string; role: string }) {
-    const payload = { sub: user.id, email: user.email, name: user.name, role: user.role };
+  login(user: { id: string; email: string; name: string; role: string }) {
+    const payload = {
+      sub: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+    };
     return {
       access_token: this.jwtService.sign(payload),
       user: {
@@ -38,8 +48,15 @@ export class AuthService {
     };
   }
 
-  async register(data: { email: string; password: string; name: string; role?: string }) {
-    const existingUser = await this.prisma.user.findUnique({ where: { email: data.email } });
+  async register(data: {
+    email: string;
+    password: string;
+    name: string;
+    role?: string;
+  }) {
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email: data.email },
+    });
     if (existingUser) {
       throw new ConflictException('El email ya está registrado');
     }
@@ -54,7 +71,8 @@ export class AuthService {
       },
     });
 
-    const { password: _, ...result } = user;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password: _password, ...result } = user;
     return this.login(result);
   }
 
@@ -63,7 +81,9 @@ export class AuthService {
     const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
     const adminName = process.env.ADMIN_NAME || 'Administrador SVC';
 
-    const existingAdmin = await this.prisma.user.findUnique({ where: { email: adminEmail } });
+    const existingAdmin = await this.prisma.user.findUnique({
+      where: { email: adminEmail },
+    });
     if (existingAdmin) {
       return { message: 'Admin ya existe', user: existingAdmin };
     }
@@ -78,7 +98,8 @@ export class AuthService {
       },
     });
 
-    const { password: _, ...result } = admin;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password: _password, ...result } = admin;
     return { message: 'Admin creado exitosamente', user: result };
   }
 }

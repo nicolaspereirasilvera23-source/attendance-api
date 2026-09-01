@@ -1,4 +1,13 @@
-import { Controller, Post, Body, Get, UseGuards, Request, HttpCode, HttpStatus } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Get,
+  UseGuards,
+  Request,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 
@@ -15,13 +24,26 @@ export class AuthController {
 
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
-  async register(@Body() body: { email: string; password: string; name: string; role?: string }) {
+  async register(
+    @Body()
+    body: {
+      email: string;
+      password: string;
+      name: string;
+      role?: string;
+    },
+  ) {
     return this.authService.register(body);
   }
 
   @UseGuards(JwtAuthGuard)
   @Get('profile')
-  async getProfile(@Request() req: any) {
+  getProfile(
+    @Request()
+    req: {
+      user: { id: string; email: string; name: string; role: string };
+    },
+  ) {
     return req.user;
   }
 
