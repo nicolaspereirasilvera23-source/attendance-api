@@ -5,51 +5,43 @@ const BASE_URL = (import.meta as unknown as { env?: Record<string, string> }).en
 
 // --- Tipos ---
 
-export interface RecentAttendance {
-  nombre: string;
-  codigo: string;
-  hora: string;
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  description: string | null;
+  startDate: string;
+  endDate: string;
+  location: string | null;
+  category: string;
+  createdAt: string;
 }
 
-export interface CheckInResponse {
-  nombre: string;
+export interface CreateEventInput {
+  title: string;
+  description?: string;
+  startDate: string;
+  endDate: string;
+  location?: string;
+  category?: string;
 }
 
-export interface StatsResponse {
-  total_jugadores: number;
-  asistencias_hoy: number;
-}
+// --- Calendario / Eventos ---
 
-// --- Asistencias ---
-
-export async function getRecentAttendances(): Promise<RecentAttendance[]> {
-  const res = await fetch(`${BASE_URL}/asistencias/recientes`);
-  if (!res.ok) throw new Error('Error al obtener historial de asistencias');
+export async function getEvents(): Promise<CalendarEvent[]> {
+  const res = await fetch(`${BASE_URL}/api/calendar`);
+  if (!res.ok) throw new Error('Error al obtener eventos');
   return res.json();
 }
 
-export async function checkIn(codigo: string): Promise<CheckInResponse> {
-  const res = await fetch(`${BASE_URL}/check-in`, {
+export async function createEvent(input: CreateEventInput): Promise<CalendarEvent> {
+  const res = await fetch(`${BASE_URL}/api/calendar`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ codigo }),
+    headers: {
+      'Content-Type': 'application/json',
+      ...(localStorage.getItem('svc_token') ? { Authorization: `Bearer ${localStorage.getItem('svc_token')}` } : {}),
+    },
+    body: JSON.stringify(input),
   });
-  if (!res.ok) throw new Error('Error en el servidor al registrar asistencia');
-  return res.json();
-}
-
-// --- Jugadores ---
-
-export async function verifyPlayer(codigo: string): Promise<{ existe: boolean }> {
-  const res = await fetch(`${BASE_URL}/verificar/${codigo}`);
-  if (!res.ok) throw new Error('Codigo no encontrado');
-  return res.json();
-}
-
-// --- Metricas ---
-
-export async function getStats(): Promise<StatsResponse> {
-  const res = await fetch(`${BASE_URL}/stats`);
-  if (!res.ok) throw new Error('Error al obtener estadisticas');
+  if (!res.ok) throw new Error('Error al crear el evento');
   return res.json();
 }

@@ -18,3 +18,5 @@ venv/
 # QA & Test Results
 test-results/
 playwright-report/
+
+# AI & Agents

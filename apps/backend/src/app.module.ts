@@ -7,7 +7,6 @@ import { AttendanceModule } from './attendance/attendance.module';
 import { StatsModule } from './stats/stats.module';
 import { KanbanModule } from './kanban/kanban.module';
 import { CalendarModule } from './calendar/calendar.module';
-import { GoogleSheetsModule } from './google-sheets/google-sheets.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -21,7 +20,6 @@ import { AppService } from './app.service';
     StatsModule,
     KanbanModule,
     CalendarModule,
-    GoogleSheetsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

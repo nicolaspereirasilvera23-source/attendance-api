@@ -3,13 +3,9 @@ import { offlineDb, generateOfflinePin, OfflinePlayer } from '../db/indexedDb';
 import { Users, UserPlus, Key, Wifi, WifiOff, CheckCircle, RefreshCw, Shield } from 'lucide-react';
 
 const SQUAD_OPTIONS = [
-  'Sub-14',
-  'Sub-16',
-  'Sub-18',
-  'Sub-21',
-  'Mayores Femenino',
-  'Mayores Masculino',
-  'Primera Division'
+  'Masculino A',
+  'Masculino B',
+  'Femenino'
 ];
 
 export const PlayersPage: React.FC = () => {
@@ -19,7 +15,7 @@ export const PlayersPage: React.FC = () => {
   // Form State
   const [name, setName] = useState('');
   const [age, setAge] = useState<number | ''>('');
-  const [squad, setSquad] = useState('Sub-18');
+  const [squad, setSquad] = useState('Masculino A');
   const [timeInClub, setTimeInClub] = useState<number | ''>('');
   const [generatedPin, setGeneratedPin] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);

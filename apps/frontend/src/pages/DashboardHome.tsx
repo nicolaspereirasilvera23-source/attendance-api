@@ -1,7 +1,8 @@
 import React from 'react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
-import { Users, UserCheck, Calendar, Trophy, ArrowUpRight } from 'lucide-react';
+import { Users, UserCheck, Calendar, Trophy, ArrowUpRight, Download } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { usePwaInstall } from '../hooks/usePwaInstall';
 
 const mockWeeklyData = [
   { day: 'Lun', asistencias: 34 },
@@ -14,6 +15,8 @@ const mockWeeklyData = [
 ];
 
 export const DashboardHome: React.FC = () => {
+  const { isInstalled, isInstalling, promptInstall } = usePwaInstall();
+
   return (
     <div className="space-y-6">
       {/* Header Info */}
@@ -23,14 +26,30 @@ export const DashboardHome: React.FC = () => {
           <p className="text-sm text-svc-muted mt-1">
             Resumen de asistencias semanales, próximos partidos y métricas de rendimiento.
           </p>
+          {isInstalled && (
+            <p className="text-xs text-svc-brightGreen font-semibold mt-2">
+              SVC instalada como app - abrila directamente desde tu escritorio.
+            </p>
+          )}
         </div>
-        <Link
-          to="/kiosco"
-          className="inline-flex items-center gap-2 bg-svc-green hover:bg-green-700 text-white font-bold px-5 py-3 rounded-xl transition-all shadow-lg shadow-green-950/30"
-        >
-          <span>Abrir Kiosco Check-In</span>
-          <ArrowUpRight className="w-5 h-5" />
-        </Link>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <button
+            onClick={promptInstall}
+            disabled={isInstalling}
+            title={isInstalled ? 'SVC ya está instalada' : 'Descargar e instalar la app de SVC'}
+            className="inline-flex items-center justify-center gap-2 border border-svc-green text-svc-brightGreen hover:bg-svc-green/10 font-bold px-5 py-3 rounded-xl transition-all disabled:opacity-60"
+          >
+            <Download className="w-5 h-5" />
+            <span>{isInstalling ? 'Instalando...' : 'Download SVC'}</span>
+          </button>
+          <Link
+            to="/kiosco"
+            className="inline-flex items-center gap-2 bg-svc-green hover:bg-green-700 text-white font-bold px-5 py-3 rounded-xl transition-all shadow-lg shadow-green-950/30"
+          >
+            <span>Abrir Kiosco Check-In</span>
+            <ArrowUpRight className="w-5 h-5" />
+          </Link>
+        </div>
       </div>
 
       {/* Metric Cards Grid */}
