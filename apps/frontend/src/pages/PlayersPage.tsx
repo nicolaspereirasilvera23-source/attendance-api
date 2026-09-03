@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { offlineDb, generateOfflinePin, OfflinePlayer } from '../db/indexedDb';
-import { Users, UserPlus, Key, Wifi, WifiOff, CheckCircle, RefreshCw, Shield } from 'lucide-react';
+import { Users, UserPlus, Key, Wifi, WifiOff, CheckCircle, CheckSquare, RefreshCw, Shield } from 'lucide-react';
 
 const SQUAD_OPTIONS = [
   'Masculino A',
@@ -20,6 +20,11 @@ export const PlayersPage: React.FC = () => {
   const [generatedPin, setGeneratedPin] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const [editingPlayerId, setEditingPlayerId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState('');
+  const [editingAge, setEditingAge] = useState<number | ''>('');
+  const [editingSquad, setEditingSquad] = useState('Masculino A');
+  const [editingTimeInClub, setEditingTimeInClub] = useState<number | ''>('');
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -64,6 +69,26 @@ export const PlayersPage: React.FC = () => {
         timeInClub: p.timeInClub
       }))
     );
+  };
+
+  const loadPlayerById = async (id: string) => {
+    try {
+      const res = await fetch(`/api/jugadores/${id}`);
+      if (res.ok) {
+        const player = await res.json();
+        setEditingPlayerId(player.id);
+        setEditingName(player.name);
+        setEditingAge(player.age);
+        setEditingSquad(player.squad || 'Masculino A');
+        setEditingTimeInClub(player.timeInClub);
+      } else {
+        showToast('No se pudo cargar el jugador', 'error');
+        setEditingPlayerId(null);
+      }
+    } catch (err) {
+      showToast('Error conectando con el servidor', 'error');
+      setEditingPlayerId(null);
+    }
   };
 
   const handleRegisterPlayer = async (e: React.FormEvent) => {
@@ -128,6 +153,47 @@ export const PlayersPage: React.FC = () => {
     }
   };
 
+  const handleEditPlayer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingName.trim() || !editingAge || !editingTimeInClub) {
+      showToast('Completa todos los campos del jugador', 'error');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const res = await fetch(`/api/jugadores/${editingPlayerId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nombre: editingName.trim(),
+          edad: Number(editingAge),
+          plantel: editingSquad,
+          tiempo: Number(editingTimeInClub)
+        })
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        showToast(`Jugador actualizado en ${editingSquad} (PIN: ${data.codigo || editingPlayerId})`, 'success');
+        setEditingPlayerId(null);
+        setEditingName('');
+        setEditingAge('');
+        setEditingSquad('Masculino A');
+        setEditingTimeInClub('');
+        await loadPlayers();
+      } else {
+        showToast(data.detail || 'Error actualizando jugador', 'error');
+      }
+    } catch (err) {
+      showToast('Error conectando con el servidor', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Toast Notification */}
@@ -185,7 +251,7 @@ export const PlayersPage: React.FC = () => {
             </div>
           )}
 
-          <form onSubmit={handleRegisterPlayer} className="space-y-4">
+<form onSubmit={handleRegisterPlayer} className="space-y-4">
             <div>
               <label className="block text-xs font-semibold uppercase text-svc-muted mb-1">Nombre Completo</label>
               <input
@@ -261,6 +327,86 @@ export const PlayersPage: React.FC = () => {
               )}
             </button>
           </form>
+
+          {editingPlayerId && (
+            <form onSubmit={handleEditPlayer} className="space-y-4">
+              <input type="hidden" value={editingPlayerId} />
+              <div>
+                <label className="block text-xs font-semibold uppercase text-svc-muted mb-1">Nombre Completo</label>
+                <input
+                  type="text"
+                  required
+                  value={editingName}
+                  onChange={(e) => setEditingName(e.target.value)}
+                  placeholder="Ej: Mateo González"
+                  className="w-full bg-svc-input border border-svc-border rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-svc-green"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold uppercase text-svc-muted mb-1">Plantel / Categoría</label>
+                <div className="relative">
+                  <Shield className="w-4 h-4 absolute left-3.5 top-3.5 text-svc-muted" />
+                  <select
+                    value={editingSquad}
+                    onChange={(e) => setEditingSquad(e.target.value)}
+                    className="w-full bg-svc-input border border-svc-border rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-svc-green"
+                  >
+                    {SQUAD_OPTIONS.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold uppercase text-svc-muted mb-1">Edad</label>
+                  <input
+                    type="number"
+                    required
+                    min={5}
+                    max={99}
+                    value={editingAge}
+                    onChange={(e) => setEditingAge(e.target.value ? Number(e.target.value) : '')}
+                    placeholder="17"
+                    className="w-full bg-svc-input border border-svc-border rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-svc-green"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold uppercase text-svc-muted mb-1">Meses en Club</label>
+                  <input
+                    type="number"
+                    required
+                    min={0}
+                    max={600}
+                    value={editingTimeInClub}
+                    onChange={(e) => setEditingTimeInClub(e.target.value ? Number(e.target.value) : '')}
+                    placeholder="12"
+                    className="w-full bg-svc-input border border-svc-border rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-svc-green"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3 bg-svc-green hover:bg-green-700 text-white font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2"
+              >
+                {loading ? (
+                  <RefreshCw className="w-5 h-5 animate-spin" />
+                ) : (
+                  <>
+                    <CheckSquare className="w-4 h-4" />
+                    <span>Actualizar Jugador</span>
+                  </>
+                )}
+              </button>
+            </form>
+          )}
         </div>
 
         {/* Lista de Jugadores & PINs con Plantel */}
@@ -300,6 +446,14 @@ export const PlayersPage: React.FC = () => {
                       </td>
                       <td className="p-3 text-gray-300">{p.age} años</td>
                       <td className="p-3 text-gray-300">{p.timeInClub} meses</td>
+                      <td className="p-3">
+                        <button
+                          onClick={() => loadPlayerById(p.id || p.code)}
+                          className="text-svc-green text-sm hover:text-svc-brightGreen underline cursor-pointer"
+                        >
+                          Editar
+                        </button>
+                      </td>
                     </tr>
                   ))
                 )}

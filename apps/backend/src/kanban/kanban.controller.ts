@@ -12,7 +12,7 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import { KanbanService } from './kanban.service';
+import { KanbanService, TASK_STATUSES, TaskStatus } from './kanban.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 interface AuthRequest extends Request {
@@ -26,8 +26,8 @@ export class KanbanController {
 
   @Get()
   async findAll(@Request() req: AuthRequest, @Query('status') status?: string) {
-    if (status) {
-      return this.kanbanService.findByStatus(status, req.user.id);
+    if (status && TASK_STATUSES.includes(status as TaskStatus)) {
+      return this.kanbanService.findByStatus(status as TaskStatus, req.user.id);
     }
     return this.kanbanService.findAll(req.user.id);
   }
@@ -44,6 +44,7 @@ export class KanbanController {
     body: {
       title: string;
       description?: string;
+      category?: string;
       priority?: string;
       dueDate?: string;
       userId?: string;
@@ -63,7 +64,8 @@ export class KanbanController {
     body: {
       title?: string;
       description?: string;
-      status?: string;
+      category?: string;
+      status?: TaskStatus;
       priority?: string;
       dueDate?: string | null;
       userId?: string | null;

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore, StaffType } from '../store/useAuthStore';
+import { login } from '../services/api';
 import { Lock, Mail, ClipboardList, ShieldCheck } from 'lucide-react';
 
 export const LoginPage: React.FC = () => {
@@ -19,20 +20,13 @@ export const LoginPage: React.FC = () => {
     setError('');
 
     try {
-      // Simulación / Conexión a NestJS /api/auth/login
-      const mockToken = 'mock_jwt_token_svc_2026';
-      const mockUser = {
-        id: '1',
-        name: staffType === 'DIRECTOR_TECNICO' ? 'Director Técnico DT' : 'Personal Administrativo',
-        email,
-        role: (staffType === 'DIRECTOR_TECNICO' ? 'COACH' : 'ADMIN') as 'COACH' | 'ADMIN',
-        staffType
-      };
-
-      setAuth(mockToken, mockUser);
+      const res = await login(email, password, staffType);
+      setAuth(res.access_token, res.user);
       navigate('/');
     } catch (err) {
-      setError('Credenciales inválidas');
+      setError(
+        err instanceof Error ? err.message : 'Error al conectar con el servidor',
+      );
     } finally {
       setLoading(false);
     }

@@ -14,7 +14,11 @@ export class AuthService {
     private jwtService: JwtService,
   ) {}
 
-  async validateUser(email: string, password: string) {
+  async validateUser(
+    email: string,
+    password: string,
+    staffType?: 'DIRECTOR_TECNICO' | 'ADMINISTRATIVO',
+  ) {
     const user = await this.prisma.user.findUnique({ where: { email } });
     if (!user) {
       throw new UnauthorizedException('Credenciales inválidas');
@@ -25,17 +29,32 @@ export class AuthService {
       throw new UnauthorizedException('Credenciales inválidas');
     }
 
+    if (staffType && user.staffType !== staffType) {
+      throw new UnauthorizedException(
+        'El rol de staff seleccionado no coincide con la cuenta',
+      );
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password: _password, ...result } = user;
     return result;
   }
 
-  login(user: { id: string; email: string; name: string; role: string }) {
+  login(user: {
+    id: string;
+    email: string;
+    name: string;
+    role: string;
+    staffType: string;
+    squad?: string | null;
+  }) {
     const payload = {
       sub: user.id,
       email: user.email,
       name: user.name,
       role: user.role,
+      staffType: user.staffType,
+      squad: user.squad ?? null,
     };
     return {
       access_token: this.jwtService.sign(payload),
@@ -44,6 +63,8 @@ export class AuthService {
         email: user.email,
         name: user.name,
         role: user.role,
+        staffType: user.staffType,
+        squad: user.squad ?? null,
       },
     };
   }
@@ -68,6 +89,8 @@ export class AuthService {
         password: hashedPassword,
         name: data.name,
         role: data.role || 'COACH',
+        staffType:
+          data.role === 'ADMIN' ? 'ADMINISTRATIVO' : 'DIRECTOR_TECNICO',
       },
     });
 
@@ -95,6 +118,7 @@ export class AuthService {
         password: hashedPassword,
         name: adminName,
         role: 'ADMIN',
+        staffType: 'ADMINISTRATIVO',
       },
     });
 

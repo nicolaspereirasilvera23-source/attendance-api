@@ -8,6 +8,7 @@ export interface User {
   email: string;
   role: 'ADMIN' | 'COACH' | 'STAFF';
   staffType: StaffType;
+  squad?: string | null;
 }
 
 interface AuthState {

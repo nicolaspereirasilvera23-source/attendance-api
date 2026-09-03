@@ -21,15 +21,15 @@ describe('API Endpoints (e2e)', () => {
 
     prisma = app.get(PrismaService);
 
-    await prisma.attendance.deleteMany({ where: { player: { code: { startsWith: 'TEST' } } } });
+    await prisma.attendance.deleteMany({
+      where: { player: { code: { startsWith: 'TEST' } } },
+    });
     await prisma.player.deleteMany({ where: { code: { startsWith: 'TEST' } } });
     await prisma.task.deleteMany({ where: { title: { startsWith: 'TEST' } } });
     await prisma.event.deleteMany({ where: { title: { startsWith: 'TEST' } } });
     await prisma.user.deleteMany({ where: { email: { startsWith: 'test' } } });
 
-    await request(app.getHttpServer())
-      .post('/api/auth/init-admin')
-      .expect(200);
+    await request(app.getHttpServer()).post('/api/auth/init-admin').expect(200);
 
     const loginRes = await request(app.getHttpServer())
       .post('/api/auth/login')
@@ -49,7 +49,7 @@ describe('API Endpoints (e2e)', () => {
         .post('/api/auth/login')
         .send({ email: 'admin@svc.local', password: 'admin123' })
         .expect(200)
-        .expect(res => {
+        .expect((res) => {
           expect(res.body.access_token).toBeDefined();
           expect(res.body.user.role).toBe('ADMIN');
         });
@@ -67,7 +67,7 @@ describe('API Endpoints (e2e)', () => {
         .get('/api/auth/profile')
         .set('Authorization', `Bearer ${authToken}`)
         .expect(200)
-        .expect(res => {
+        .expect((res) => {
           expect(res.body.email).toBe('admin@svc.local');
         });
     });
@@ -80,7 +80,7 @@ describe('API Endpoints (e2e)', () => {
         .set('Authorization', `Bearer ${authToken}`)
         .send({ name: 'Test Player', age: 20, timeInClub: 12 })
         .expect(201)
-        .expect(res => {
+        .expect((res) => {
           expect(res.body.code).toMatch(/^\d{4}$/);
           expect(res.body.name).toBe('Test Player');
           expect(res.body.active).toBe(true);
@@ -93,7 +93,7 @@ describe('API Endpoints (e2e)', () => {
       return request(app.getHttpServer())
         .get(`/api/jugadores/verificar/${playerCode}`)
         .expect(200)
-        .expect(res => {
+        .expect((res) => {
           expect(res.body.existe).toBe(true);
           expect(res.body.nombre).toBe('Test Player');
         });
@@ -110,7 +110,7 @@ describe('API Endpoints (e2e)', () => {
         .get('/api/jugadores')
         .set('Authorization', `Bearer ${authToken}`)
         .expect(200)
-        .expect(res => {
+        .expect((res) => {
           expect(Array.isArray(res.body)).toBe(true);
           expect(res.body.some((p: any) => p.code === playerCode)).toBe(true);
         });
@@ -122,7 +122,7 @@ describe('API Endpoints (e2e)', () => {
         .set('Authorization', `Bearer ${authToken}`)
         .send({ age: 21, timeInClub: 13 })
         .expect(200)
-        .expect(res => {
+        .expect((res) => {
           expect(res.body.age).toBe(21);
           expect(res.body.timeInClub).toBe(13);
         });
@@ -155,7 +155,7 @@ describe('API Endpoints (e2e)', () => {
         .post('/api/check-in')
         .send({ codigo: activePlayerCode })
         .expect(200)
-        .expect(res => {
+        .expect((res) => {
           expect(res.body.nombre).toBe('Active Test Player');
         });
     });
@@ -178,7 +178,7 @@ describe('API Endpoints (e2e)', () => {
       return request(app.getHttpServer())
         .get('/api/asistencias/recientes')
         .expect(200)
-        .expect(res => {
+        .expect((res) => {
           expect(Array.isArray(res.body)).toBe(true);
           expect(res.body.length).toBeGreaterThan(0);
         });
@@ -188,7 +188,7 @@ describe('API Endpoints (e2e)', () => {
       return request(app.getHttpServer())
         .get('/api/asistencias/semanales')
         .expect(200)
-        .expect(res => {
+        .expect((res) => {
           expect(res.body.total_semana).toBeDefined();
           expect(Array.isArray(res.body.por_dia)).toBe(true);
           expect(res.body.por_dia.length).toBe(7);
@@ -205,7 +205,7 @@ describe('API Endpoints (e2e)', () => {
           ],
         })
         .expect(200)
-        .expect(res => {
+        .expect((res) => {
           expect(Array.isArray(res.body)).toBe(true);
           expect(res.body[0].success).toBe(true);
         });
@@ -217,7 +217,7 @@ describe('API Endpoints (e2e)', () => {
       return request(app.getHttpServer())
         .get('/api/stats')
         .expect(200)
-        .expect(res => {
+        .expect((res) => {
           expect(res.body.total_jugadores).toBeDefined();
           expect(res.body.asistencias_hoy).toBeDefined();
         });
@@ -231,9 +231,13 @@ describe('API Endpoints (e2e)', () => {
       return request(app.getHttpServer())
         .post('/api/kanban')
         .set('Authorization', `Bearer ${authToken}`)
-        .send({ title: 'TEST Task', description: 'Test description', priority: 'HIGH' })
+        .send({
+          title: 'TEST Task',
+          description: 'Test description',
+          priority: 'HIGH',
+        })
         .expect(201)
-        .expect(res => {
+        .expect((res) => {
           expect(res.body.title).toBe('TEST Task');
           expect(res.body.status).toBe('TODO');
           taskId = res.body.id;
@@ -245,7 +249,7 @@ describe('API Endpoints (e2e)', () => {
         .get('/api/kanban')
         .set('Authorization', `Bearer ${authToken}`)
         .expect(200)
-        .expect(res => {
+        .expect((res) => {
           expect(Array.isArray(res.body)).toBe(true);
         });
     });
@@ -256,7 +260,7 @@ describe('API Endpoints (e2e)', () => {
         .set('Authorization', `Bearer ${authToken}`)
         .send({ status: 'IN_PROGRESS' })
         .expect(200)
-        .expect(res => {
+        .expect((res) => {
           expect(res.body.status).toBe('IN_PROGRESS');
         });
     });
@@ -267,7 +271,7 @@ describe('API Endpoints (e2e)', () => {
         .set('Authorization', `Bearer ${authToken}`)
         .send({ title: 'TEST Updated', priority: 'URGENT' })
         .expect(200)
-        .expect(res => {
+        .expect((res) => {
           expect(res.body.title).toBe('TEST Updated');
           expect(res.body.priority).toBe('URGENT');
         });
@@ -296,7 +300,7 @@ describe('API Endpoints (e2e)', () => {
           category: 'MATCH',
         })
         .expect(201)
-        .expect(res => {
+        .expect((res) => {
           expect(res.body.title).toBe('TEST Match');
           eventId = res.body.id;
         });
@@ -307,7 +311,7 @@ describe('API Endpoints (e2e)', () => {
         .get('/api/calendar')
         .set('Authorization', `Bearer ${authToken}`)
         .expect(200)
-        .expect(res => {
+        .expect((res) => {
           expect(Array.isArray(res.body)).toBe(true);
         });
     });
@@ -317,7 +321,7 @@ describe('API Endpoints (e2e)', () => {
         .get('/api/calendar/upcoming')
         .set('Authorization', `Bearer ${authToken}`)
         .expect(200)
-        .expect(res => {
+        .expect((res) => {
           expect(Array.isArray(res.body)).toBe(true);
         });
     });

@@ -25,6 +25,44 @@ export interface CreateEventInput {
   category?: string;
 }
 
+// --- Autenticación ---
+
+export type StaffType = 'DIRECTOR_TECNICO' | 'ADMINISTRATIVO';
+
+export interface AuthUser {
+  id: string;
+  name: string;
+  email: string;
+  role: 'ADMIN' | 'COACH' | 'STAFF';
+  staffType: StaffType;
+  squad?: string | null;
+}
+
+export interface LoginResponse {
+  access_token: string;
+  user: AuthUser;
+}
+
+export async function login(
+  email: string,
+  password: string,
+  staffType: StaffType,
+): Promise<LoginResponse> {
+  const res = await fetch(`${BASE_URL}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password, staffType }),
+  });
+
+  const data = await res.json().catch(() => null);
+  if (!res.ok || !data) {
+    const message =
+      data?.message || 'Credenciales inválidas o rol de staff incorrecto';
+    throw new Error(message);
+  }
+  return data as LoginResponse;
+}
+
 // --- Calendario / Eventos ---
 
 export async function getEvents(): Promise<CalendarEvent[]> {
