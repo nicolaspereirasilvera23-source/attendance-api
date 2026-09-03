@@ -4,12 +4,6 @@ dist/
 .env
 *.log
 
-# Python
-__pycache__/
-*.py[cod]
-venv/
-.venv/
-
 # Database & Reports
 *.db
 *.xlsx
